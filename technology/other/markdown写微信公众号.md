@@ -7,6 +7,7 @@
 ![image-20210206113635544](image-20210206113635544.png)
 
 * 这点可以用`jsdelivr`进行CDN加速，比如有一张github图片地址是：`https://github.com/chuliangcai/study/blob/master/src/computer-science-education.jpg?raw=true` study是仓库名，分支是master，文件路径是`/src/computer-science-education.jpg`，加速后的地址是：`https://cdn.jsdelivr.net/gh/chuliangcai/study/src/computer-science-education.jpg`
+* 由于过程中需要解析markdown，flexmark是个不错的选择。
 
 ### 开搞
 
@@ -69,12 +70,12 @@ public class FlexMarkDemoApplication {
     }
 }
 ```
-使用`typora` 打开`freedom`文件夹，效果如下
+使用`typora` 打开`freedom`文件夹，查看效果。
 
 ![image-20210206122154575](image-20210206122154575.png) 
 
 4. 提交文章`git push`
-5. 编写java代码将文章中的图片全部转换为jsdelivr的路径，代码如下
+5. 编写`java`代码将文章中的图片全部转换为jsdelivr的路径，代码如下
 
 ```java
 public class RegexDemo {
@@ -110,19 +111,27 @@ public class RegexDemo {
 
 ![image-20210206142803863](image-20210206142803863.png)
 
-7. 进入微信公众号后台，新建图文素材，粘贴刚才的内容。
+7. 进入微信公众号后台，新建图文素材，找个漂亮的首图，粘贴刚才的内容。
 
 8. 最终手机效果如下，效果满分！
 
 ![image-20210206143255427](image-20210206143255427.png)
 
-### 扩展其他平台
-#### 知乎
+### 扩展到其他平台
 
-markdown-nick就支持啦。
+让自己的文章传播出去吧
+
+#### 知乎
+markdown-nice就支持哦！
+![image-20210424160847211](image-20210424160847211.png)
+
+#### 博客园
+
+#### 简书
+#### CSDN
 
 ### 附录
 
 jsdelivr 网站地址：https://www.jsdelivr.com/?docs=gh
-markdown-nick官网：https://www.mdnice.com/
-flexmark地址：https://github.com/vsch/flexmark-java
+markdown-nice官网：https://www.mdnice.com/
+mark解析器flexmark地址：https://github.com/vsch/flexmark-java
