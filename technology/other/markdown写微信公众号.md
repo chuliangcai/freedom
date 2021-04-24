@@ -9,12 +9,67 @@
 * 这点可以用`jsdelivr`进行CDN加速，比如有一张github图片地址是：`https://github.com/chuliangcai/study/blob/master/src/computer-science-education.jpg?raw=true` study是仓库名，分支是master，文件路径是`/src/computer-science-education.jpg`，加速后的地址是：`https://cdn.jsdelivr.net/gh/chuliangcai/study/src/computer-science-education.jpg`
 
 ### 开搞
-1. 在github新建一个仓库，设置成`public` ，取名`freedom`寓意自由。做一个自由的👨‍💻
+
+1. 选择一篇写好的本地文章，比如`markdown写微信公众号.md` ，需要特别注意的是图片一定要使用标准的markdown格式，形如`![title](本地图片路径)`，否则后面转换的时候会不支持。
+
+2. 在github新建一个仓库，设置成`public` ，取名`freedom`寓意自由。做一个自由的👨‍💻
 
 ![image-20210206120334441](image-20210206120334441.png)
 
-2. 使用`git clone https://github.com/chuliangcai/freedom.git` 将仓库下载到本地
-3. 使用`typora` 打开`freedom`文件夹，创建好目录
+3. 使用`git clone https://github.com/chuliangcai/freedom.git` 将仓库下载到本地
+4. 将本地文章拷贝到目标仓库中。因为单纯的文件拷贝无法将引用的图片一起拷走，所以此处写代码进行自动拷贝，代码如下：
+```java
+package com.family.flexmark;
+
+import java.io.File;
+import java.io.FileReader;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import com.vladsch.flexmark.ast.Image;
+import com.vladsch.flexmark.parser.Parser;
+import com.vladsch.flexmark.util.ast.Node;
+import com.vladsch.flexmark.util.collection.iteration.ReversiblePeekingIterator;
+import com.vladsch.flexmark.util.data.MutableDataSet;
+
+public class FlexMarkDemoApplication {
+    private static String dirPath = "";
+    public static File destFileDir;
+
+    public static void main(String[] args) throws Exception {
+        MutableDataSet options = new MutableDataSet();
+        Parser parser = Parser.builder(options).build();
+        String file = "/Users/chuliangcai/data/projects/blog/app/blog/editor/markdown写微信公众号.md";
+        String descFile = "/Users/chuliangcai/data/projects/freedom/technology/other/markdown写微信公众号.md";
+        dirPath = StringUtils.substringBeforeLast(file, "/");
+        destFileDir = new File(StringUtils.substringBeforeLast(descFile, "/"));
+        //noinspection ResultOfMethodCallIgnored
+        destFileDir.mkdirs();
+        FileUtils.copyFileToDirectory(new File(file), destFileDir);
+        Node document = parser.parseReader(new FileReader(file));
+        extractNode(document);
+    }
+
+    public static void extractNode(Node node) throws Exception {
+        if (!node.hasChildren()) {
+            return;
+        }
+        ReversiblePeekingIterator<Node> iterator = node.getChildIterator();
+        while (iterator.hasNext()) {
+            Node node1 = iterator.next();
+            if (node1 instanceof Image) {
+                Image image = (Image) node1;
+                File imgFile = new File(dirPath + "/" + image.getUrl().toString());
+                FileUtils.copyFileToDirectory(imgFile, destFileDir);
+            } else {
+                extractNode(node1);
+            }
+        }
+    }
+}
+```
+使用`typora` 打开`freedom`文件夹，效果如下
 
 ![image-20210206122154575](image-20210206122154575.png) 
 
@@ -25,8 +80,8 @@
 public class RegexDemo {
 
     public static final String OUTPUT_PATH = "/Users/chuliangcai/Desktop/markdown写微信公众号.md";
-    public static final Pattern PATTERN = Pattern.compile("!\\[image-\\d{17}]\\(image-\\d{17}\\.png\\)");
-    public static final String IMAGE_PATH_PREFIX = "https://cdn.jsdelivr.net/gh/chuliangcai/freedom/technology/other/";
+    public static final Pattern PATTERN = Pattern.compile("!\\[[0-9a-zA-Z_.-]+]\\([0-9a-zA-Z_.-]+\\)");
+    public static final String IMAGE_PATH_PREFIX = "https://cdn.jsdelivr.net/gh/chuliangcai/freedom/technology/algorithm/";
 
     public static void main(String[] args) throws Exception {
         FileInputStream fis = new FileInputStream("/Users/chuliangcai/data/projects/freedom/technology/other/markdown写微信公众号.md");
@@ -61,7 +116,13 @@ public class RegexDemo {
 
 ![image-20210206143255427](image-20210206143255427.png)
 
+### 扩展其他平台
+#### 知乎
+
+markdown-nick就支持啦。
+
 ### 附录
 
 jsdelivr 网站地址：https://www.jsdelivr.com/?docs=gh
 markdown-nick官网：https://www.mdnice.com/
+flexmark地址：https://github.com/vsch/flexmark-java
