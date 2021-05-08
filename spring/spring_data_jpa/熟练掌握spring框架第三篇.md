@@ -214,7 +214,7 @@ public class SpringAopDemoApplication implements ApplicationRunner {
 >执行register共花费了2000毫秒
 >执行run共花费了3009毫秒
 
-分析：getBean拿到的`userService`肯定是代理之后的对象。那它是什么时候被代理的呢。debug发现在执行`bean`的初始化时，会调用所有的`BeanPostProcessor`逐个处理。其中有一个特别的`Processor`是：`AnnotationAwareAspectJAutoProxyCreator`，而这个`processor`就是`@EnableAspectJAutoProxy`引入的。打开注解 `@EnableAspectJAutoProxy`的源码发现，它的核心是导入了一个`AspectJAutoProxyRegistrar`(AspectJ自动代理登记员)的类。而这个类的作用就是往注册中心注册`AnnotationAwareAspectJAutoProxyCreator`这个`BeanPostProcessor`。是不是和之前说的`@EnableJpaRepositories` 如出一辙。线索找到了，接下来就是解刨它的`postProcessAfterInitialization`方法了。
+分析：getBean拿到的`userService`肯定是代理之后的对象。那它是什么时候被代理的呢。debug发现在执行`bean`的初始化时，会调用所有的`BeanPostProcessor`逐个处理。其中有一个特别的`Processor`是：`AnnotationAwareAspectJAutoProxyCreator`，而这个`processor`就是`@EnableAspectJAutoProxy`引入的。打开注解 `@EnableAspectJAutoProxy`的源码发现，它的核心是导入了一个`AspectJAutoProxyRegistrar`(AspectJ自动代理登记员)的类。而这个类的作用就是往注册中心注册`AnnotationAwareAspectJAutoProxyCreator`这个`BeanPostProcessor`。是不是和之前说的`@EnableJpaRepositories` 如出一辙。线索找到了，接下来就是解剖它的`postProcessAfterInitialization`方法了。
 
 ```java
 public Object postProcessAfterInitialization(@Nullable Object bean, String beanName) {
