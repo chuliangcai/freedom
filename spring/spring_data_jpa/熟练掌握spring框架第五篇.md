@@ -51,7 +51,7 @@ protected void init(PoolConfiguration properties) throws SQLException {
         busy = new LinkedBlockingQueue<>();
         //初始化用于存放连接的空闲队列
         idle = new FairBlockingQueue<>();
-        //初始化定时任务：每5000毫秒一次进行连接池的监控检查。
+        //初始化定时任务：每5000毫秒一次进行连接池的健康检查。
         initializePoolCleaner(properties);
 
         //如果开启JMX，注册Mbean
@@ -94,9 +94,29 @@ protected void init(PoolConfiguration properties) throws SQLException {
 
 ##### 能一直借吗
 
-当然不能，读者可以参照下`ConnectionPool`的`private PooledConnection borrowConnection(int wait, String username, String password)`方法。它会先使用非阻塞的方式从`idle`拿，如果拿到了直接返回，如果拿不到。看下当前连接数有没有超过`maxActive`，默认是`100`哦。如果没有，创建一个。如果超过了。按照指定超时时间阻塞拿吧。这个超时时间如果`wait`传的是`-1`的话，默认是30秒。如果30秒之后还是拿不到连接呢。那只能自曝了。
+当然不能，读者可以参照下`ConnectionPool`的`private PooledConnection borrowConnection(int wait, String username, String password)`方法。它会先使用非阻塞的方式从`idle`拿，如果拿到了直接返回，如果拿不到。看下当前连接数有没有超过`maxActive`，默认是`100`哦。如果没有，创建一个。如果超过了。按照指定超时时间阻塞拿吧。这个超时时间如果`wait`传的是`-1`的话，默认是`maxWait`30秒。如果30秒之后还是拿不到连接呢。那只能自曝了。
 
 ![image-20210515161100455](image-20210515161100455.png)
+
+##### 连接长时间不用会关闭吗
+
+`tomcat连接池`有个配置项叫做`maxAge`。它的含义是：
+
+> 连接保持时间（以毫秒计）。当连接要返回池中时，连接池会检查是否达到 `now - time-when-connected > maxAge` 的条件，如果条件达成，则关闭该连接，不再将其返回池中。默认值为 `0`，意味着连接将保持开放状态，在将连接返回池中时，不会执行任何年龄检查。
+
+`PooledConnection`有个`isMaxAgeExpired`的方法就是用来检查是否超过了最大保持时间。`ConectionPool`有个`reconnectIfExpired`方法检查如果某个连接超过了最大保持时间，就进行重连，即先断开，再连接。而在归还连接的时候会执行`reconnectIfExpired`，所以如果设置了`maxAge`那么就有可能触发重连操作。
+
+另外我们看还有个配置叫`maxIdle`。它的含义是：
+
+> （整型值）池始终都应保留的连接的最大数目。默认为 `maxActive:100`。会周期性检查空闲连接（如果启用该功能），留滞时间超过 `minEvictableIdleTimeMillis` 的空闲连接将会被释放。
+
+归还连接的时候，如果发现空闲队列的大小超过这个`阈值`，就会释放当前要归还的连接。即关闭该连接。
+
+有了`maxIdle`，势必会有`minIdle`，它的含义是：`池始终都应保留的连接的最小数目`
+
+定时清理任务`PoolCleaner`发现`idle`队列的大小如果超过这个值的话，就会检查每个连接，把当前时间减去最后一次`touched`的时间，如果超过`minEvictableIdleTimeMillis`，则释放连接。注意：这个配置项可没有maxXXX哦。
+
+`tomcat`给了我们很多配置项，以便根据实际场景灵活变动。然而实际线上我们常常将`initialSize`，`minIdle`，`maxIdle`，这三个指标设置为一样大。是为什么呢。其实原因很简单。比如说1天的访问量，高峰期除外。50个`connection`就能应付了。那么这三个值就设置为50，这样连接数就基本保持不变。不会频繁的`connect`和`disconect`，因为连接也是很耗时的事情啊。如果时间都花在上面了，不就影响正确业务了吗？偶尔有个流量小高峰，没关系，连接数瞬间飙一下，又恢复到50了。所以这个值怎么定，我认为，如果一天中大部分时间都不会超过这个值，那么就是是它了。触类旁通，其实很多连接池的配置都可以参考这个套路。
 
 #### 使用jmx监控ConnectionPool
 
@@ -253,3 +273,6 @@ SET autocommit=1;
 
 `PROPAGATION_NESTED`这种传播行为就是靠`savepoint`实现的。`AbstractPlatformTransactionManager`的`handleExistingTransaction`方法里，如果是嵌套事务的话，首先判断是否允许嵌套事务，默认是允许的，如果不允许，抛异常。然后创建并持有`安全点`，可以回顾一下mysql安全点的知识，是能能够满足嵌套事务的要求的，就是内层事务回滚不会影响外层事务。
 
+我们再来回答上面的数据库连接借了啥时候还的问题。很显然当事务提交之后。就可以将数据库连接还回去了。下图是调用栈。事务提交之后会进行一些清理动作，释放连接就是其中一项。
+
+![image-20210517115624721](image-20210517115624721.png)
